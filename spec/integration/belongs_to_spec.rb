@@ -7,7 +7,6 @@ describe DataMapper::NestedAttributes do
   describe "every accessible belongs_to association with no associated parent model", :shared => true do
     
     it "should return a new_record from get_\#{association_name}" do
-      @profile.person_attributes = { :name => 'Martin' }
       @profile.get_person.should_not be_nil
       @profile.get_person.should be_new_record
     end
@@ -33,8 +32,8 @@ describe DataMapper::NestedAttributes do
     it "should not allow to create a new person via Profile#person_attributes" do
       @profile.person_attributes = { :name => 'Martin' }
       @profile.person.should be_nil
-      @profile.save
-      Profile.all.size.should == 1
+      @profile.save # fails because of validations (not null on belongs_to)
+      Profile.all.size.should == 0
       Person.all.size.should == 0
     end
     
@@ -73,6 +72,27 @@ describe DataMapper::NestedAttributes do
       Person.all.size.should == 1
       Person.first.name.should == 'Martin Gamsjaeger'
       Profile.all.size.should == 1
+    end
+    
+    it "should perform atomic commits" do
+      @profile.person_attributes = { :name => nil } # will fail because of validations
+      @profile.person.should_not be_nil
+      @profile.person.name.should be_nil
+      @profile.save
+      @profile.person.should be_new_record
+      @profile.should be_new_record
+      Profile.all.size.should == 0
+      Person.all.size.should == 0
+    
+      @profile.person_attributes = { :name => 'Martin' }
+      @profile.person.should_not be_nil
+      @profile.person.name.should == 'Martin'
+      @profile.nick = nil # will fail because of validations
+      @profile.save
+      @profile.person.should be_new_record
+      @profile.should be_new_record
+      Profile.all.size.should == 0
+      Person.all.size.should == 0
     end
     
   end
